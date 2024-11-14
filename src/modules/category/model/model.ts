@@ -1,3 +1,4 @@
+import { Children } from './../../../../node_modules/path-scurry/dist/commonjs/index.d'
 import { z } from 'zod'
 import { ModelStatus } from '~/share/model/base-model'
 
@@ -39,4 +40,4 @@ export const CategorySchema = z.object({
   updatedAt: z.date().optional().nullable()
 })
 
-export type Category = z.infer<typeof CategorySchema>
+export type Category = z.infer<typeof CategorySchema> & { children?: Category[] }

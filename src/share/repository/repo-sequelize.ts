@@ -1,20 +1,16 @@
-import { modelName } from './dto'
-import { sequelize } from './../../../../share/component/sequelize'
-import { PagingDTO } from '~/share/model/paging'
-import { IRepository } from '../../interfaces'
-import { CategoryCondDTO, CategoryUpdateDTO } from '../../model/dto'
-import { Category, CategorySchema } from '../../model/model'
 import { Sequelize } from 'sequelize'
-import { ModelStatus } from '~/share/model/base-model'
+import { IRepository } from '../interface'
+import { PagingDTO } from '../model/paging'
 import { Op } from 'sequelize'
+import { ModelStatus } from '../model/base-model'
 
-export class MySQLCategoryRepository implements IRepository {
+export abstract class BaseRepositorySequelize<Entity, Cond, UpdateDTO> implements IRepository<Entity, Cond, UpdateDTO> {
   constructor(
     private readonly sequelize: Sequelize,
     private readonly modelName: string
   ) {}
 
-  async get(id: string): Promise<Category | null> {
+  async get(id: string): Promise<Entity | null> {
     const data = await this.sequelize.models[this.modelName].findByPk(id)
 
     if (!data) return null
@@ -28,14 +24,12 @@ export class MySQLCategoryRepository implements IRepository {
 
     return {
       ...data.get({ plain: true }),
-      parentId: data.getDataValue('parent_id'),
       createdAt: data.getDataValue('created_at'),
-      updatedAt: data.getDataValue('updated_at'),
-      children: []
-    } as Category
+      updatedAt: data.getDataValue('updated_at')
+    } as Entity
   }
 
-  async list(cond: CategoryCondDTO, paging: PagingDTO): Promise<Array<Category>> {
+  async list(cond: Cond, paging: PagingDTO): Promise<Array<Entity>> {
     const { page, limit } = paging
 
     const condSQL = { ...cond, status: { [Op.ne]: ModelStatus.DELETED } }
@@ -49,24 +43,25 @@ export class MySQLCategoryRepository implements IRepository {
       offset: (page - 1) * limit
     })
 
-    return rows.map((row) =>
-      CategorySchema.parse({
-        ...row.get({ plain: true }),
-        parentId: row.getDataValue('parent_id'),
-        createdAt: row.getDataValue('created_at'),
-        updatedAt: row.getDataValue('updated_at')
-      })
-    )
+    return rows.map((row) => row.get({ plain: true }))
   }
 
-  async insert(data: Category): Promise<boolean> {
-    await this.sequelize.models[this.modelName].create(data)
+  async findByCond(cond: Cond): Promise<Entity | null> {
+    const data = await this.sequelize.models[this.modelName].findOne({ where: cond as any })
+
+    if (!data) return null
+
+    return data.get({ plain: true }) as Entity
+  }
+
+  async insert(data: Entity): Promise<boolean> {
+    await this.sequelize.models[this.modelName].create(data as any)
     return true
   }
 
-  async update(id: string, data: CategoryUpdateDTO): Promise<boolean> {
+  async update(id: string, data: UpdateDTO): Promise<boolean> {
     // Không cần check có tồn tại hay không vì usecase làm
-    await this.sequelize.models[this.modelName].update(data, { where: { id } })
+    await this.sequelize.models[this.modelName].update(data as any, { where: { id } })
     return true
   }
 

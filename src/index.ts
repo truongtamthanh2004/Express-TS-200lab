@@ -6,6 +6,7 @@ import { CategoryCreateSchema, CategoryUpdateDTO } from './modules/category/mode
 import { v7 } from 'uuid'
 import { setupCategoryHexagon } from './modules/category'
 import { sequelize } from './share/component/sequelize'
+import { setupBrandHexagon } from './modules/brand'
 
 console.log('Hello, World!')
 
@@ -23,6 +24,7 @@ config()
   })
 
   app.use('/v1', setupCategoryHexagon(sequelize))
+  app.use('/v1/', setupBrandHexagon(sequelize))
 
   // CRUDL: Create, Read, Update, Delete, List
   //          POST, GET, PUT/PATCH, DELETE, GET

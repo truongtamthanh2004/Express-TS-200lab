@@ -3,6 +3,7 @@ import { Request, Response } from 'express'
 import { CategoryUseCase } from '../../usecase'
 import { CategoryCondDTOSchema, CategoryCreateSchema, CategoryUpdateSchema } from '../../model/dto'
 import { ICategoryUseCase } from '../../interfaces'
+import { Category } from '../../model/model'
 
 export class CategoryHttpService {
   constructor(private readonly useCase: ICategoryUseCase) {}
@@ -62,11 +63,16 @@ export class CategoryHttpService {
   }
 
   async listCategoriesAPI(req: Request, res: Response) {
-    const { success, data: paging, error } = PagingDTOSchema.safeParse(req.query)
+    // const { success, data: paging, error } = PagingDTOSchema.safeParse(req.query)
 
-    if (!success) {
-      res.status(400).json({ message: 'Invalid request', error })
-      return
+    // if (!success) {
+    //   res.status(400).json({ message: 'Invalid request', error })
+    //   return
+    // }
+
+    const paging = {
+      page: 1,
+      limit: 200
     }
 
     const cond = await CategoryCondDTOSchema.parse(req.query)
@@ -74,6 +80,33 @@ export class CategoryHttpService {
     console.log(cond)
 
     const result = await this.useCase.listCategories(cond, paging)
-    res.status(200).json({ data: result, paging, filter: cond })
+
+    const categoriesTree = this.buildTree(result)
+
+    res.status(200).json({ data: categoriesTree, paging, filter: cond })
+  }
+
+  private buildTree(categories: Category[]): Category[] {
+    const categoriesTree: Category[] = []
+    const mapChildren = new Map<string, Category[]>()
+
+    for (let i = 0; i < categories.length; i++) {
+      const category = categories[i]
+
+      if (!mapChildren.get(category.id)) {
+        mapChildren.set(category.id, [])
+      }
+
+      category.children = mapChildren.get(category.id)
+
+      if (!category.parentId) {
+        categoriesTree.push(category)
+      } else {
+        const children = mapChildren.get(category.parentId)
+        children ? children.push(category) : mapChildren.set(category.parentId, [category])
+      }
+    }
+
+    return categoriesTree
   }
 }
